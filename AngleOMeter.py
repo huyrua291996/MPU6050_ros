@@ -17,7 +17,7 @@ import sys
 kalmanX = KalmanAngle()
 kalmanY = KalmanAngle()
 
-RestrictPitch = True	#Comment out to restrict roll to ±90deg instead - please read: http://www.freescale.com/files/sensors/doc/app_note/AN3461.pdf
+RestrictPitch = True	
 radToDeg = 57.2957786
 kalAngleX = 0
 kalAngleY = 0
@@ -169,9 +169,9 @@ while True:
 	    gyroXAngle = gyroXRate * dt
 	    gyroYAngle = gyroYAngle * dt
 	    gyroZAngle += gyroZRate * dt
-		gyroZAngle = gyroXAngle - 360 * math.floor(gyroZAngle / 360)
-		if (gyroZAngle > 180):
-			gyroZAngle = gyroZAngle - 360
+	    gyroZAngle = gyroZAngle - 360 * math.floor(gyroZAngle / 360)
+	    if (gyroZAngle > 180):
+		gyroZAngle = gyroZAngle - 360
 
 		#compAngle = constant * (old_compAngle + angle_obtained_from_gyro) + constant * angle_obtained from accelerometer
 	    compAngleX = 0.93 * (compAngleX + gyroXRate * dt) + 0.07 * roll
@@ -182,39 +182,40 @@ while True:
 	    if ((gyroYAngle < -180) or (gyroYAngle > 180)):
 	        gyroYAngle = kalAngleY
 
-		accx = accX / 16384
-		accy = accY / 16384
-		accz = accZ / 16384
+	    accx = accX / 16384
+	    accy = accY / 16384
+	    accz = accZ / 16384
 
-		gyrox = gyroX / 16.4
-		gyroy = gyroY / 16.4
-		gyroz = gyroZ / 16.4	    
+	    gyrox = gyroX / 16.4
+	    gyroy = gyroY / 16.4
+	    gyroz = gyroZ / 16.4	    
 
 	    #print("Angle X: " + str(kalAngleX)+"   " +"Angle Y: " + str(kalAngleY))
 	    #print(str(roll)+"  "+str(gyroXAngle)+"  "+str(compAngleX)+"  "+str(kalAngleX)+"  "+str(pitch)+"  "+str(gyroYAngle)+"  "+str(compAngleY)+"  "+str(kalAngleY))
+	    #print(str(gyroZAngle))
 	    time.sleep(0.005)
 	    imuMsg.header.stamp= rospy.Time.now()
-        imuMsg.header.frame_id = imu_link
-        imuMsg.orientation_covariance[0] = ori_cov
-        imuMsg.orientation_covariance[4] = ori_cov
-        imuMsg.orientation_covariance[8] = ori_cov
-        imuMsg.angular_velocity_covariance[0] = vel_cov
-        imuMsg.angular_velocity_covariance[4] = vel_cov
-        imuMsg.angular_velocity_covariance[8] = vel_cov
-        imuMsg.linear_acceleration_covariance[0] = acc_cov
-        imuMsg.linear_acceleration_covariance[4] = acc_cov
-        imuMsg.linear_acceleration_covariance[8] = acc_cov
-        imuMsg.orientation.x = float(kalAngleX)
-        imuMsg.orientation.y = float(kalAngleY)
-        imuMsg.orientation.z = float(gyroZAngle)
-        imuMsg.angular_velocity.x = float(gyrox)
-        imuMsg.angular_velocity.y = float(gyroy)
-        imuMsg.angular_velocity.z = float(gyroz)
-        imuMsg.linear_acceleration.x = float(accx)
-        imuMsg.linear_acceleration.y = float(accy)
-        imuMsg.linear_acceleration.z = float(accz)
-        pub.publish(imuMsg)
-	    rospy.spin()
+            imuMsg.header.frame_id = imu_link
+            imuMsg.orientation_covariance[0] = ori_cov
+            imuMsg.orientation_covariance[4] = ori_cov
+            imuMsg.orientation_covariance[8] = ori_cov
+            imuMsg.angular_velocity_covariance[0] = vel_cov
+            imuMsg.angular_velocity_covariance[4] = vel_cov
+            imuMsg.angular_velocity_covariance[8] = vel_cov
+            imuMsg.linear_acceleration_covariance[0] = acc_cov
+            imuMsg.linear_acceleration_covariance[4] = acc_cov
+            imuMsg.linear_acceleration_covariance[8] = acc_cov
+            imuMsg.orientation.x = float(kalAngleX)
+            imuMsg.orientation.y = float(kalAngleY)
+            imuMsg.orientation.z = float(gyroZAngle)
+            imuMsg.angular_velocity.x = float(gyrox)
+            imuMsg.angular_velocity.y = float(gyroy)
+            imuMsg.angular_velocity.z = float(gyroz)
+            imuMsg.linear_acceleration.x = float(accx)
+            imuMsg.linear_acceleration.y = float(accy)
+            imuMsg.linear_acceleration.z = float(accz)
+            pub.publish(imuMsg)
+	    #rospy.spin()
 
 	except Exception as exc:
 		flag += 1
