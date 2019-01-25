@@ -10,6 +10,9 @@ from Kalman import KalmanAngle
 import smbus			#import SMBus module of I2C
 import time
 import math
+import rospy
+from sensor_msgs.msg import Imu
+import sys
 
 kalmanX = KalmanAngle()
 kalmanY = KalmanAngle()
@@ -67,6 +70,16 @@ def read_raw_data(addr):
 bus = smbus.SMBus(1) 	# or bus = smbus.SMBus(0) for older version boards
 DeviceAddress = 0x68   # MPU6050 device address
 
+ori_cov = float(rospy.get_param('~ori_cov', '0.0025') ) # Orientation covariance
+vel_cov = float(rospy.get_param('~vel_cov', '0.02') ) # Angular velocity covariance
+acc_cov = float(rospy.get_param('~acc_cov', '0.04') ) # Linear acceleration covariance
+imu_i2c = rospy.get_param('~imu_i2c', '0x68') # I2C device No
+imu_link = rospy.get_param('~imu_link', 'imu_link') # imu_link name
+pub_freq = float( rospy.get_param('~pub_freq', '10') ) # hz of imu pub
+pub = rospy.Publisher('imu_data', Imu, queue_size=1)
+imuMsg = Imu()
+rospy.init_node('mpu6050_node', anonymous=True)
+
 MPU_Init()
 
 time.sleep(1)
@@ -86,10 +99,12 @@ else:
 print(roll)
 kalmanX.setAngle(roll)
 kalmanY.setAngle(pitch)
-gyroXAngle = roll;
-gyroYAngle = pitch;
-compAngleX = roll;
-compAngleY = pitch;
+gyroXAngle = roll
+gyroYAngle = pitch
+compAngleX = roll
+compAngleY = pitch
+gyroZAngle = 0
+gyroZRate = 0
 
 timer = time.time()
 flag = 0
@@ -121,6 +136,7 @@ while True:
 
 	    gyroXRate = gyroX/131
 	    gyroYRate = gyroY/131
+	    gyroZRate = gyroZ/16.4
 
 	    if (RestrictPitch):
 
@@ -152,6 +168,10 @@ while True:
 		#angle = (rate of change of angle) * change in time
 	    gyroXAngle = gyroXRate * dt
 	    gyroYAngle = gyroYAngle * dt
+	    gyroZAngle += gyroZRate * dt
+		gyroZAngle = gyroXAngle - 360 * math.floor(gyroZAngle / 360)
+		if (gyroZAngle > 180):
+			gyroZAngle = gyroZAngle - 360
 
 		#compAngle = constant * (old_compAngle + angle_obtained_from_gyro) + constant * angle_obtained from accelerometer
 	    compAngleX = 0.93 * (compAngleX + gyroXRate * dt) + 0.07 * roll
@@ -162,9 +182,39 @@ while True:
 	    if ((gyroYAngle < -180) or (gyroYAngle > 180)):
 	        gyroYAngle = kalAngleY
 
-	    print("Angle X: " + str(kalAngleX)+"   " +"Angle Y: " + str(kalAngleY))
+		accx = accX / 16384
+		accy = accY / 16384
+		accz = accZ / 16384
+
+		gyrox = gyroX / 16.4
+		gyroy = gyroY / 16.4
+		gyroz = gyroZ / 16.4	    
+
+	    #print("Angle X: " + str(kalAngleX)+"   " +"Angle Y: " + str(kalAngleY))
 	    #print(str(roll)+"  "+str(gyroXAngle)+"  "+str(compAngleX)+"  "+str(kalAngleX)+"  "+str(pitch)+"  "+str(gyroYAngle)+"  "+str(compAngleY)+"  "+str(kalAngleY))
 	    time.sleep(0.005)
+	    imuMsg.header.stamp= rospy.Time.now()
+        imuMsg.header.frame_id = imu_link
+        imuMsg.orientation_covariance[0] = ori_cov
+        imuMsg.orientation_covariance[4] = ori_cov
+        imuMsg.orientation_covariance[8] = ori_cov
+        imuMsg.angular_velocity_covariance[0] = vel_cov
+        imuMsg.angular_velocity_covariance[4] = vel_cov
+        imuMsg.angular_velocity_covariance[8] = vel_cov
+        imuMsg.linear_acceleration_covariance[0] = acc_cov
+        imuMsg.linear_acceleration_covariance[4] = acc_cov
+        imuMsg.linear_acceleration_covariance[8] = acc_cov
+        imuMsg.orientation.x = float(kalAngleX)
+        imuMsg.orientation.y = float(kalAngleY)
+        imuMsg.orientation.z = float(gyroZAngle)
+        imuMsg.angular_velocity.x = float(gyrox)
+        imuMsg.angular_velocity.y = float(gyroy)
+        imuMsg.angular_velocity.z = float(gyroz)
+        imuMsg.linear_acceleration.x = float(accx)
+        imuMsg.linear_acceleration.y = float(accy)
+        imuMsg.linear_acceleration.z = float(accz)
+        pub.publish(imuMsg)
+	    rospy.spin()
 
 	except Exception as exc:
 		flag += 1
